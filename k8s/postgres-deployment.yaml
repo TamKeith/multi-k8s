@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: postgres
+  template:
+    metadata:
+      labels:
+        component: postgres
+    spec:
+      # allocate storage (this sets rqst in the pod to reach out to Kubernetes to reach out to Kubernetes and say i need this type of long term storage)
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: database-persistent-volume-claim
+      containers:
+        - name: postgres
+          image: postgres:10
+          ports:
+            - containerPort: 5432
+          # assign storage for use by all the different containers that are being used by our pod  
+          volumeMounts:
+            - name: postgres-storage
+              # mountPath is designating where inside the container this storage should be made available, ie anything stored in the path/directory below will actually be stored inside our volume
+              mountPath: /var/lib/postgresql/data
+              # unique to postgres only (this means any data inside the container that is stored in '/var/lib/postgresql/data', is going to be stored inside a folder called 'postgres' inside of the actual persistent volume claim)
+              subPath: postgres
+          # override postgres default password and use the one that matches that from the PGPASSWORD env variable
+          env:
+           - name: POSTGRES_PASSWORD
+             valueFrom:
+              secretKeyRef:
+                name: pgpassword
+                key: PGPASSWORD
